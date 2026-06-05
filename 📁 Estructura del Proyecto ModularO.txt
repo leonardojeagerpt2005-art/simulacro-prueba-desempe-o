@@ -1,0 +1,647 @@
+📁 Estructura del Proyecto ModularOrganizaremos el código bajo la siguiente estructura limpia:  Plaintext├── index.html
+├── src
+│   ├── main.js             # Punto de entrada de la aplicación
+│   ├── router.js           # Enrutador de la SPA y protección de rutas (Guards)
+│   ├── api
+│   │   └── client.js       # Configuración centralizada de Fetch / Peticiones HTTP
+│   ├── assets
+│   │   └── style.css       # Estilos (Tailwind importaciones)
+│   ├── components
+│   │   └── navbar.js       # Componente de navegación dinámica (Logout, links por rol)
+│   ├── views
+│   │   ├── login.js        # Vista de Inicio de Sesión
+│   │   ├── dashboard.js    # Vista principal (Historial de reservas según rol)
+│   │   └── spaces.js       # Vista opcional: Gestión de Espacios (Puntos extra)
+│   └── utils
+│       └── toast.js        # Notificaciones emergentes (Toast notifications)
+└── db.json                 # Base de datos simulada para json-server
+🛠️ Base de Datos (db.json)Crea este archivo en la raíz del proyecto para alimentar tu json-server. Contiene los usuarios de prueba requeridos y una estructura inicial para espacios y reservas.  JSON{
+  "users": [
+    {
+      "id": "1",
+      "name": "Administrador",
+      "email": "admin@test.com",
+      "password": "Admin123",
+      "role": "admin"
+    },
+    {
+      "id": "2",
+      "name": "Juan Pérez",
+      "email": "user1@test.com",
+      "password": "User123",
+      "role": "user"
+    },
+    {
+      "id": "3",
+      "name": "María López",
+      "email": "user2@test.com",
+      "password": "User123",
+      "role": "user"
+    }
+  ],
+  "spaces": [
+    { "id": "1", "name": "Oficina Privada A", "type": "Oficina", "capacity": 4, "location": "Piso 2", "status": "Disponible" },
+    { "id": "2", "name": "Sala Avalon", "type": "Sala de reuniones", "capacity": 12, "location": "Piso 1", "status": "Disponible" },
+    { "id": "3", "name": "Coworking Central", "type": "Coworking", "capacity": 30, "location": "Piso 1", "status": "Disponible" }
+  ],
+  "bookings": [
+    {
+      "id": "1",
+      "userId": "2",
+      "userName": "Juan Pérez",
+      "spaceId": "2",
+      "spaceName": "Sala Avalon",
+      "date": "2026-06-10",
+      "startTime": "09:00",
+      "endTime": "11:00",
+      "reason": "Reunión de alineación de desarrollo",
+      "status": "Pendiente"
+    }
+  ]
+}
+💻 Desarrollo del Código Fuente1. Cliente API Centralizado (src/api/client.js)Centraliza las peticiones fetch hacia el json-server de manera reutilizable.  JavaScript// URL base del backend simulado con json-server
+const BASE_URL = 'http://localhost:3000';
+
+/**
+ * Función auxiliar para estandarizar las peticiones HTTP (GET, POST, PUT, DELETE)
+ */
+async function httpRequest(endpoint, options = {}) {
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      ...options
+    });
+
+    if (!response.ok) throw new Error(`Error en la petición: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    console.error(`Error API (${endpoint}):`, error);
+    throw error;
+  }
+}
+
+// Métodos CRUD exportables para el consumo del sistema
+export const apiClient = {
+  get: (endpoint) => httpRequest(endpoint, { method: 'GET' }),
+  post: (endpoint, data) => httpRequest(endpoint, { method: 'POST', body: JSON.stringify(data) }),
+  put: (endpoint, data) => httpRequest(endpoint, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (endpoint) => httpRequest(endpoint, { method: 'DELETE' })
+};
+2. Notificaciones Toast (src/utils/toast.js)Para cumplir con los requerimientos visuales adicionales (Bonus).  JavaScript/**
+ * Muestra alertas visuales dinámicas sin bloquear la experiencia de usuario
+ */
+export function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container') || createToastContainer();
+  
+  const toast = document.createElement('div');
+  toast.className = `p-4 rounded shadow-lg text-white font-medium transition-all duration-300 transform translate-y-2 max-w-sm ${
+    type === 'success' ? 'bg-green-600' : 'bg-red-600'
+  }`;
+  toast.textContent = message;
+
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function createToastContainer() {
+  const container = document.createElement('div');
+  container.id = 'toast-container';
+  container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-2';
+  document.body.appendChild(container);
+  return container;
+}
+3. Componente de Navegación (src/components/navbar.js)Renderizado dinámico de la barra superior adaptada según el rol del usuario en sesión.  JavaScriptimport { showToast } from '../utils/toast.js';
+
+/**
+ * Retorna el HTML del Navbar adaptado a los permisos del usuario activo
+ */
+export function renderNavbar() {
+  const user = JSON.parse(localStorage.getItem('currentUser')); [cite: 64, 179]
+  if (!user) return ''; // No mostrar navbar si no está logueado
+
+  // Enlace exclusivo para administradores
+  const adminLinks = user.role === 'admin' 
+    ? `<li><a href="#/spaces" class="hover:text-blue-200 transition">Gestionar Espacios</a></li>` [cite: 38, 147]
+    : '';
+
+  return `
+    <nav class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
+      <div class="flex items-center gap-6">
+        <h1 class="text-xl font-bold tracking-wider">Riwi Spaces</h1>
+        <ul class="flex gap-4 text-sm font-medium">
+          <li><a href="#/dashboard" class="hover:text-blue-200 transition">Reservas</a></li>
+          ${adminLinks}
+        </ul>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-sm bg-blue-700 px-3 py-1 rounded-full font-semibold">
+          ${user.name} (${user.role.toUpperCase()})
+        </span>
+        <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-medium transition">
+          Cerrar Sesión
+        </button>
+      </div>
+    </nav>
+  `;
+}
+
+/**
+ * Agrega los listeners de eventos para interactuar con la Navbar (Logout)
+ */
+export function initNavbarEvents() {
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      localStorage.removeItem('currentUser'); // Limpieza de sesión [cite: 183]
+      showToast('Sesión cerrada correctamente'); [cite: 234]
+      window.location.hash = '#/login'; // Redirección automática [cite: 163]
+    });
+  }
+}
+4. Vista de Login (src/views/login.js)Formulario de autenticación con manejo de errores y persistencia.  JavaScriptimport { apiClient } from '../api/client.js';
+import { showToast } from '../utils/toast.js';
+
+export const LoginView = {
+  render: () => `
+    <div class="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div class="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Iniciar Sesión</h2>
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Correo Electrónico</label>
+            <input type="email" id="email" required class="mt-1 w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Contraseña</label>
+            <input type="password" id="password" required class="mt-1 w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded font-semibold transition">
+            Ingresar
+          </button>
+        </form>
+      </div>
+    </div>
+  `,
+  
+  init: () => {
+    const form = document.getElementById('login-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      try {
+        // Obtenemos los usuarios y validamos las credenciales [cite: 61]
+        const users = await apiClient.get('/users');
+        const user = users.find(u => u.email === email && u.password === password);
+
+        if (!user) {
+          showToast('Credenciales incorrectas', 'error'); [cite: 62]
+          return;
+        }
+
+        // Persistencia en localStorage [cite: 64]
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        showToast(`¡Bienvenido, ${user.name}!`);
+        window.location.hash = '#/dashboard'; // Redirecciona al panel principal [cite: 163]
+      } catch (error) {
+        showToast('Error de conexión con el servidor', 'error'); [cite: 62]
+      }
+    });
+  }
+};
+5. Panel de Reservas (src/views/dashboard.js)Esta vista maneja el CRUD completo de reservas según las reglas del negocio establecidas.  JavaScriptimport { apiClient } from '../api/client.js';
+import { showToast } from '../utils/toast.js';
+
+export const DashboardView = {
+  render: async () => {
+    const user = JSON.parse(localStorage.getItem('currentUser')); [cite: 64]
+    
+    // Obtener datos concurrentes de la API [cite: 206]
+    const allBookings = await apiClient.get('/bookings');
+    const spaces = await apiClient.get('/spaces');
+
+    // Filtrar reservas según Rol: El usuario estándar solo ve las suyas [cite: 43, 49, 131]
+    const filteredBookings = user.role === 'admin' 
+      ? allBookings 
+      : allBookings.filter(b => b.userId === user.id);
+
+    // Mapear opciones de espacios disponibles en el formulario
+    const spaceOptions = spaces
+      .filter(s => s.status === 'Disponible')
+      .map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+    return `
+      <div class="container mx-auto p-6 max-w-6xl">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <div class="bg-white p-6 rounded-lg shadow-md h-fit">
+            <h3 class="text-lg font-bold text-gray-800 mb-4" id="form-title">Nueva Reserva</h3>
+            <form id="booking-form" class="space-y-3">
+              <input type="hidden" id="booking-id">
+              <div>
+                <label class="block text-xs font-medium text-gray-600">Espacio Laboral</label>
+                <select id="space-id" class="w-full p-2 border rounded mt-1">${spaceOptions}</select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600">Fecha</label>
+                <input type="date" id="date" required class="w-full p-2 border rounded mt-1">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600">Hora Inicio</label>
+                  <input type="time" id="start-time" required class="w-full p-2 border rounded mt-1">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600">Hora Fin</label>
+                  <input type="time" id="end-time" required class="w-full p-2 border rounded mt-1">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600">Motivo</label>
+                <textarea id="reason" rows="2" required class="w-full p-2 border rounded mt-1"></textarea>
+              </div>
+              <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded font-semibold transition">
+                Guardar Reserva
+              </button>
+            </form>
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2 overflow-x-auto">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Historial de Reservas</h3>
+            <table class="w-full border-collapse text-left text-sm text-gray-600">
+              <thead>
+                <tr class="border-b bg-gray-50 text-gray-700 uppercase text-xs">
+                  <th class="p-3">Espacio</th>
+                  <th class="p-3">Solicitante</th>
+                  <th class="p-3">Fecha / Hora</th>
+                  <th class="p-3">Estado</th>
+                  <th class="p-3 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                ${filteredBookings.map(b => `
+                  <tr>
+                    <td class="p-3 font-medium text-gray-900">${b.spaceName}</td>
+                    <td class="p-3">${b.userName}</td>
+                    <td class="p-3 text-xs">${b.date}<br>${b.startTime} - ${b.endTime}</td>
+                    <td class="p-3">
+                      <span class="px-2 py-1 rounded-full text-xs font-semibold ${
+                        b.status === 'Aprobada' ? 'bg-green-100 text-green-800' :
+                        b.status === 'Rechazada' ? 'bg-red-100 text-red-800' :
+                        b.status === 'Cancelada' ? 'bg-gray-100 text-gray-800' : 'bg-yellow-100 text-yellow-800'
+                      }">${b.status}</span>
+                    </td>
+                    <td class="p-3 flex justify-center gap-1">
+                      ${renderRowActions(user, b)}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    `;
+  },
+
+  init: async () => {
+    const user = JSON.parse(localStorage.getItem('currentUser')); [cite: 64]
+    const form = document.getElementById('booking-form');
+
+    // --- ACCIÓN: GUARDAR / ACTUALIZAR RESERVA (POST / PUT) --- [cite: 123, 124]
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const bookingId = document.getElementById('booking-id').value;
+      const spaceSelect = document.getElementById('space-id');
+      
+      const payload = {
+        userId: user.id,
+        userName: user.name,
+        spaceId: spaceSelect.value,
+        spaceName: spaceSelect.options[spaceSelect.selectedIndex]?.text || '',
+        date: document.getElementById('date').value,
+        startTime: document.getElementById('start-time').value,
+        endTime: document.getElementById('end-time').value,
+        reason: document.getElementById('reason').value,
+        status: "Pendiente" // Estado por defecto [cite: 104]
+      };
+
+      try {
+        // Regla de Negocio: Validar cruces de horarios (Excluyendo la reserva actual si es edición) [cite: 116]
+        const currentBookings = await apiClient.get('/bookings');
+        const isOverlapping = currentBookings.some(b => 
+          b.id !== bookingId &&
+          b.spaceId === payload.spaceId &&
+          b.date === payload.date &&
+          ((payload.startTime >= b.startTime && payload.startTime < b.endTime) ||
+           (payload.endTime > b.startTime && payload.endTime <= b.endTime))
+        );
+
+        if (isOverlapping) {
+          showToast('El espacio ya está ocupado en ese horario', 'error'); [cite: 116]
+          return;
+        }
+
+        if (bookingId) {
+          // Si estamos editando, conservamos el estado original o dejamos que el admin modifique [cite: 119]
+          if(user.role !== 'admin') payload.status = "Pendiente";
+          await apiClient.put(`/bookings/${bookingId}`, payload); [cite: 124]
+          showToast('Reserva modificada con éxito');
+        } else {
+          await apiClient.post('/bookings', payload); [cite: 123]
+          showToast('Reserva creada con éxito');
+        }
+        window.location.reload();
+      } catch {
+        showToast('Error al procesar la reserva', 'error');
+      }
+    });
+
+    // --- DELEGACIÓN DE EVENTOS PARA CAPTURAR CLICKS DE LA TABLA --- [cite: 205]
+    document.querySelector('table').addEventListener('click', async (e) => {
+      const action = e.target.dataset.action;
+      const id = e.target.dataset.id;
+      if (!action || !id) return;
+
+      if (action === 'edit') {
+        // Cargar datos en el formulario para editar (PUT/PATCH) [cite: 124]
+        const b = await apiClient.get(`/bookings/${id}`);
+        document.getElementById('booking-id').value = b.id;
+        document.getElementById('space-id').value = b.spaceId;
+        document.getElementById('date').value = b.date;
+        document.getElementById('start-time').value = b.startTime;
+        document.getElementById('end-time').value = b.endTime;
+        document.getElementById('reason').value = b.reason;
+        document.getElementById('form-title').textContent = 'Editar Reserva';
+      } 
+      
+      else if (action === 'delete') {
+        // Eliminar físicamente del servidor [cite: 125]
+        if (confirm('¿Seguro que deseas eliminar esta reserva?')) {
+          await apiClient.delete(`/bookings/${id}`);
+          showToast('Reserva eliminada');
+          window.location.reload();
+        }
+      } 
+      
+      else {
+        // Actualizaciones de estado puntuales (Aprobar, Rechazar, Cancelar)
+        const b = await apiClient.get(`/bookings/${id}`);
+        b.status = action === 'approve' ? 'Aprobada' : action === 'reject' ? 'Rechazada' : 'Cancelar';
+        
+        // Si el usuario regular cancela una aprobada, pasa a estado "Cancelada" [cite: 118]
+        if (action === 'cancel') b.status = 'Cancelada'; [cite: 45]
+
+        await apiClient.put(`/bookings/${id}`, b);
+        showToast(`Reserva actualizada a: ${b.status}`);
+        window.location.reload();
+      }
+    });
+  }
+};
+
+/**
+ * Función helper para renderizar dinámicamente botones de acción basados en las Reglas de Negocio [cite: 115]
+ */
+function renderRowActions(user, b) {
+  let actions = '';
+
+  if (user.role === 'admin') {
+    // El Administrador tiene control absoluto de estados y edición [cite: 119, 128]
+    if (b.status === 'Pendiente') {
+      actions += `
+        <button data-action="approve" data-id="${b.id}" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Aprobar</button>
+        <button data-action="reject" data-id="${b.id}" class="bg-yellow-500 text-white px-2 py-1 text-xs rounded hover:bg-yellow-600">Rechazar</button>
+      `;
+    }
+    actions += `
+      <button data-action="edit" data-id="${b.id}" class="bg-gray-500 text-white px-2 py-1 text-xs rounded hover:bg-gray-600">Editar</button>
+      <button data-action="delete" data-id="${b.id}" class="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">Eliminar</button>
+    `;
+  } else {
+    // Reglas para Usuario Estándar [cite: 132]
+    if (b.status === 'Pendiente') {
+      actions += `
+        <button data-action="edit" data-id="${b.id}" class="bg-gray-500 text-white px-2 py-1 text-xs rounded hover:bg-gray-600">Modificar</button>
+        <button data-action="cancel" data-id="${b.id}" class="bg-red-400 text-white px-2 py-1 text-xs rounded hover:bg-red-500">Cancelar</button>
+      `;
+    } else if (b.status === 'Aprobada') {
+      // Las reservas aprobadas solo se pueden cancelar [cite: 118]
+      actions += `<button data-action="cancel" data-id="${b.id}" class="bg-red-400 text-white px-2 py-1 text-xs rounded hover:bg-red-500">Cancelar</button>`;
+    }
+  }
+  return actions || '<span class="text-xs text-gray-400">Sin acciones</span>';
+}
+6. Vista Opcional: Gestión de Espacios (src/views/spaces.js)Módulo administrativo opcional para ganar los puntos extra estipulados.  JavaScriptimport { apiClient } from '../api/client.js';
+import { showToast } from '../utils/toast.js';
+
+export const SpacesView = {
+  render: async () => {
+    const spaces = await apiClient.get('/spaces');
+    return `
+      <div class="container mx-auto p-6 max-w-5xl">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Gestión Global de Espacios de Trabajo</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-lg shadow-md h-fit">
+            <h3 class="text-md font-bold mb-3" id="space-form-title">Crear Espacio</h3>
+            <form id="space-form" class="space-y-3">
+              <input type="hidden" id="space-id">
+              <div>
+                <label class="text-xs font-medium block">Nombre</label>
+                <input type="text" id="space-name" required class="w-full p-2 border rounded mt-1">
+              </div>
+              <div>
+                <label class="text-xs font-medium block">Tipo</label>
+                <input type="text" id="space-type" placeholder="Ej: Auditorio" required class="w-full p-2 border rounded mt-1">
+              </div>
+              <div>
+                <label class="text-xs font-medium block">Capacidad</label>
+                <input type="number" id="space-capacity" required class="w-full p-2 border rounded mt-1">
+              </div>
+              <div>
+                <label class="text-xs font-medium block">Ubicación</label>
+                <input type="text" id="space-location" required class="w-full p-2 border rounded mt-1">
+              </div>
+              <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded text-sm font-semibold hover:bg-blue-700">Guardar</button>
+            </form>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+            <ul class="divide-y">
+              ${spaces.map(s => `
+                <div class="py-3 flex justify-between items-center">
+                  <div>
+                    <h4 class="font-bold text-gray-800">${s.name} (${s.type})</h4>
+                    <p class="text-xs text-gray-500">Capacidad: ${s.capacity} pers | Ubicación: ${s.location}</p>
+                  </div>
+                  <div class="flex gap-2">
+                    <button data-action="edit-space" data-id="${s.id}" class="text-blue-600 font-medium text-xs">Editar</button>
+                    <button data-action="delete-space" data-id="${s.id}" class="text-red-600 font-medium text-xs">Eliminar</button>
+                  </div>
+                </div>
+              `).join('')}
+            </ul>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+  init: () => {
+    const form = document.getElementById('space-form');
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('space-id').value;
+      const payload = {
+        name: document.getElementById('space-name').value,
+        type: document.getElementById('space-type').value,
+        capacity: parseInt(document.getElementById('space-capacity').value),
+        location: document.getElementById('space-location').value,
+        status: "Disponible"
+      };
+
+      if (id) {
+        await apiClient.put(`/spaces/${id}`, payload); [cite: 150]
+        showToast('Espacio actualizado');
+      } else {
+        await apiClient.post('/spaces', payload); [cite: 149]
+        showToast('Espacio creado');
+      }
+      window.location.reload();
+    });
+
+    document.querySelector('.md\\:col-span-2').addEventListener('click', async (e) => {
+      const action = e.target.dataset.action;
+      const id = e.target.dataset.id;
+      if (!action || !id) return;
+
+      if (action === 'edit-space') {
+        const s = await apiClient.get(`/spaces/${id}`);
+        document.getElementById('space-id').value = s.id;
+        document.getElementById('space-name').value = s.name;
+        document.getElementById('space-type').value = s.type;
+        document.getElementById('space-capacity').value = s.capacity;
+        document.getElementById('space-location').value = s.location;
+        document.getElementById('space-form-title').textContent = 'Editar Espacio';
+      } else if (action === 'delete-space') {
+        if (confirm('¿Eliminar espacio?')) {
+          await apiClient.delete(`/spaces/${id}`); [cite: 151]
+          showToast('Espacio eliminado');
+          window.location.reload();
+        }
+      }
+    });
+  }
+};
+7. Núcleo del Enrutador e Interceptores (src/router.js)Configuración de la SPA basada en hashes con Middlewares de Control de Acceso integrados para blindar rutas.  JavaScriptimport { LoginView } from './views/login.js';
+import { DashboardView } from './views/dashboard.js';
+import { SpacesView } from './views/spaces.js';
+import { renderNavbar, initNavbarEvents } from './components/navbar.js';
+import { showToast } from './utils/toast.js';
+
+// Mapa de rutas de la SPA
+const routes = {
+  '#/login': { view: LoginView, private: false },
+  '#/dashboard': { view: DashboardView, private: true },
+  '#/spaces': { view: SpacesView, private: true, roleRequired: 'admin' } // Solo administradores [cite: 159, 161]
+};
+
+/**
+ * Orquestador de enrutamiento dinámico
+ */
+export async function handleRouting() {
+  const hash = window.location.hash || '#/login';
+  const route = routes[hash];
+
+  // 1. Manejo de Rutas no encontradas (404) -> Redirección por defecto
+  if (!route) {
+    window.location.hash = '#/login';
+    return;
+  }
+
+  // Capturamos el usuario activo desde LocalStorage [cite: 64, 179]
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+  // 2. Guard de Autenticación: Bloquear si es privada y no está logueado [cite: 156, 157]
+  if (route.private && !currentUser) {
+    showToast('Acceso denegado. Por favor inicia sesión.', 'error'); [cite: 165]
+    window.location.hash = '#/login';
+    return;
+  }
+
+  // 3. Guard de Autorización por Roles: Evitar intrusos en módulos administrativos [cite: 13, 158]
+  if (route.roleRequired && currentUser.role !== route.roleRequired) {
+    showToast('No tienes permisos para acceder a este módulo', 'error'); [cite: 165]
+    window.location.hash = '#/dashboard'; // Redirección de seguridad [cite: 163]
+    return;
+  }
+
+  // --- RENDERIZADO DINÁMICO DE COMPONENTES --- 
+  const appContainer = document.getElementById('app');
+  
+  // Inyectamos el Navbar superior adaptado y luego la vista correspondiente [cite: 192]
+  appContainer.innerHTML = `
+    ${renderNavbar()}
+    <main class="min-h-screen bg-gray-50">${await route.view.render()}</main>
+  `;
+
+  // Inicializamos eventos interactivos del DOM de los módulos activos [cite: 204, 205]
+  initNavbarEvents();
+  route.view.init();
+}
+
+// Escuchar cambios de hash y recargas de página para preservar el estado [cite: 176, 181]
+window.addEventListener('hashchange', handleRouting);
+window.addEventListener('load', handleRouting);
+8. Archivo de Entrada (src/main.js)Punto de arranque de la SPA que unifica los módulos e importa los estilos globales.  JavaScriptimport './assets/style.css'; // Estilos Tailwind
+import { handleRouting } from './router.js';
+
+// Inicializar la aplicación al cargar el documento
+document.addEventListener('DOMContentLoaded', () => {
+  handleRouting();
+});
+9. Contenedor HTML Principal (index.html)El archivo HTML permanece limpio; todo el contenido se genera dinámicamente mediante JavaScript.  HTML<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Riwi Booking System SPA</title>
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-900">
+  
+  <div id="app"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+📝 Documentación del Proyecto (README.md)Este es el archivo README.md técnico obligatorio en inglés que requiere la prueba de desarrollo. Guárdalo tal cual en la raíz del proyecto:  Markdown# Riwi Shared Spaces Booking System (SPA)
+
+A high-performance Single Page Application (SPA) designed to manage workplace bookings seamlessly, avoiding schedule overlaps and ensuring accurate role authorization.
+
+## Technologies Used
+* Vanilla JavaScript (ES6+ Modules)
+* Vite (Build Tool & Dev Server)
+* TailwindCSS (Utility-first styling framework)
+* JSON-Server (Mock REST API ecosystem)
+
+## Installation & Setup
+
+1. **Clone or structure the files** as displayed in the documentation guide.
+2. **Install all dependencies**:
+   ```bash
+   npm install
+Running the Project1. Launch the Mock APIRun the local database on port 3000 using json-server:Bashnpx json-server --watch db.json --port 3000
+2. Run the Vite ClientIn a secondary terminal tab, execute the client application:Bashnpm run dev
+Open the local URL provided by Vite (usually http://localhost:5173).Test CredentialsRoleEmailPasswordAdminadmin@test.comAdmin123User 1user1@test.comUser123User 2user2@test.comUser123Technical Decisions & ArchitectureHash-Based Routing (#/): Selected to bypass complex server configuration, resolving client-side rendering immediately.Route Guards (Middleware): Centralized logic verification checks prior to DOM mounting to block non-authenticated sessions or restricted operations.Concurrency Overlap Rule: Standard input data queries are compared against API schedules to block double-booking windows instantaneously.
+---
+
+## 🎯 Consejos Clave para tu Sustentación Técnica (40% de la Nota)
+
+Como la sustentación vale casi la mitad de la nota total[cite: 236], repasa estos puntos específicos antes de presentar:
+
+1. **Justificación del Enrutamiento**: Si el evaluador te pregunta por qué usaste enrutamiento basado en Hash (`#/`), dile que lo elegiste porque garantiza el correcto renderizado del lado del cliente en aplicaciones SPA sin necesidad de configurar redirecciones complejas en servidores de producción como Apache o Nginx[cite: 176].
+2. **Explicación de las Reglas de Negocio**: Prepárate para mostrar cómo el método `isOverlapping` en `dashboard.js` evalúa que las fechas coincidan y que la hora de inicio o de fin no se crucen con registros existentes, cumpliendo estrictamente con la regla de evitar duplicados[cite: 116].
+3. **Flujo de los Guards (Protección)**: Explica cómo el archivo `router.js` funciona como un embudo (o *Middleware*), verificando primero si existe un token o usuario en `localStorage` antes de pintar la vista en el contenedor `#app`[cite: 154, 209].
+
+¡Todo listo! Copia los bloques de código en sus respectivos archivos, levanta los servid
