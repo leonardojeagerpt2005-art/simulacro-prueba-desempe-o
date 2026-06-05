@@ -1,0 +1,37 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Manager",
+      "email": "manager@test.com",
+      "password": "abc123",
+      "role": "manager"
+    },
+    {
+      "id": "2",
+      "name": "Collaborator",
+      "email": "user@test.com",
+      "password": "123456",
+      "role": "collaborator"
+    }
+  ],
+  "projects": [
+    {
+      "name": "i3r09u 0209u09ur0",
+      "description": "uig329b kewbcjo",
+      "status": "Completed",
+      "createdAt": "2026-06-05T04:10:39.458Z",
+      "assignedTo": 2,
+      "id": "Iph9v7p4d5g"
+    },
+    {
+      "name": "kjbsrñkjvb{as",
+      "description": "nkxc khñs< jlkds lv",
+      "status": "Pending",
+      "assignedTo": 2,
+      "createdAt": "2026-06-05",
+      "id": "DvXJ8ksIWvc"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}

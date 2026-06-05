@@ -1,0 +1,78 @@
+/* --- Estilos para la Vista de Proyectos --- */
+.projects-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: sans-serif;
+}
+
+.navbar-projects {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 20px;
+}
+
+.form-container {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group input, 
+.form-group textarea, 
+.form-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.projects-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    background: white;
+}
+
+.projects-table th, 
+.projects-table td {
+    border: 1px solid #dee2e6;
+    padding: 12px;
+    text-align: left;
+}
+
+.projects-table th {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-delete:hover {
+    background-color: #bd2130;
+}
+
+.status-badge-info {
+    color: #6c757d;
+    font-size: 13px;
+    font-style: italic;
+}
